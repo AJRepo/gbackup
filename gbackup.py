@@ -37,7 +37,7 @@ def main():
                 CLIENT_SECRET_FILE, SCOPES)
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run
-        with open('token.json', 'w') as token:
+        with open('token.json', 'w', encoding='utf-8') as token:
             token.write(creds.to_json())
 
     next_page_token = ""
@@ -56,9 +56,8 @@ def main():
             return
         print('Files:')
         for item in items:
-            print(u'{0} ({1})'.format(item['name'], item['id']))
+            print(f"{item['name']:<60}\t{item['id']}")
     except HttpError as error:
-        # TODO(developer) - Handle errors from drive API.
         print(f'An error occurred: {error}')
 
 def get_google_files(this_service, this_next_page_token):
