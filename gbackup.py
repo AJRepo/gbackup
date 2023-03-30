@@ -46,19 +46,30 @@ def main():
 
         # Call the Drive v3 API
         results = get_google_files(service, next_page_token)
-        items = results.get('files', [])
-        next_page_token = results.get('nextPageToken', None)
-        if next_page_token:
-            print('NEXT-TOKEN:', next_page_token)
-
-        if not items:
-            print('No files found.')
-            return
         print('Files:')
-        for item in items:
-            print(f"{item['name']:<60}\t{item['id']}")
+        print_google_page(results)
+        next_page_token = results.get('nextPageToken', None)
+        i=0
+        while next_page_token and i < 10:
+            print_google_page(results)
+            next_page_token = results.get('nextPageToken', None)
+            results = get_google_files(service, next_page_token)
+            i=i+1
+        return
+
     except HttpError as error:
         print(f'An error occurred: {error}')
+
+def print_google_page(this_results):
+    """Prints the files returned by results
+    """
+    items = this_results.get('files', [])
+    if not items:
+        print('No files found.')
+        return
+    for item in items:
+        print(f"{item['name']:<60}\t{item['id']}")
+    return
 
 def get_google_files(this_service, this_next_page_token):
     """Gets the files using NextPageToken
