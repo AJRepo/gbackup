@@ -47,11 +47,11 @@ def main():
         # Call the Drive v3 API
         results = get_google_files(service, next_page_token)
         print('Files:')
-        print_google_page(results)
+        print_google_page(service, results)
         next_page_token = results.get('nextPageToken', None)
         i=0
-        while next_page_token and i < 10:
-            print_google_page(results)
+        while next_page_token and i < 3:
+            print_google_page(service, results)
             next_page_token = results.get('nextPageToken', None)
             results = get_google_files(service, next_page_token)
             i=i+1
@@ -60,7 +60,7 @@ def main():
     except HttpError as error:
         print(f'An error occurred: {error}')
 
-def print_google_page(this_results):
+def print_google_page(service, this_results):
     """Prints the files returned by results
     """
     items = this_results.get('files', [])
@@ -68,17 +68,33 @@ def print_google_page(this_results):
         print('No files found.')
         return
     for item in items:
-        print(f"{item['name']:<60}\t{item['id']}")
+        if 'parents' in item:
+            folder_name = '/'
+            for parent in item['parents']:
+                folder = service.files().get(fileId=parent, fields="id, name, parents").execute()
+                folder_name = folder_name + folder.get('name') + '/'
+        else:
+            folder_name = '/'
+        if 'size' in item:
+            print(f"{item['name']:<60}\t{item['id']}\t{item['mimeType']:<30}\t{folder_name:<20}")
+        else:
+            #is a directory?
+            print(f"{item['name']:<60}\t{item['id']}\t{item['mimeType']:<30}\t{folder_name:<20}")
     return
 
 def get_google_files(this_service, this_next_page_token):
     """Gets the files using NextPageToken
     """
     results = this_service.files().list(
-        pageSize=10,
+        pageSize=1000,
+        corpora='user',
         pageToken=this_next_page_token,
-        fields="nextPageToken, files(id, name, modifiedTime)").execute()
+        q="'me' in owners",
+        fields="nextPageToken, files(id, name, mimeType, size, modifiedTime, parents, ownedByMe)"
+        ).execute()
     return results
 
 if __name__ == '__main__':
     main()
+
+# vim: tabstop=4 shiftwidth=4 expandtab
