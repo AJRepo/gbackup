@@ -70,9 +70,14 @@ def print_google_page(service, this_results):
     for item in items:
         if 'parents' in item:
             folder_name = '/'
-            for parent in item['parents']:
-                folder = service.files().get(fileId=parent, fields="id, name, parents").execute()
-                folder_name = folder_name + folder.get('name') + '/'
+            #Google now only allows one parent per item
+            parents = item['parents']
+            while parents is not None:
+                parent = parents[0]
+                folder = service.files().get(fileId=parent,
+                                  fields="id, name, parents").execute()
+                folder_name = '/' + folder.get('name') + folder_name
+                parents = folder.get('parents')
         else:
             folder_name = '/'
         if 'size' in item:
@@ -86,7 +91,7 @@ def get_google_files(this_service, this_next_page_token):
     """Gets the files using NextPageToken
     """
     results = this_service.files().list(
-        pageSize=1000,
+        pageSize=2,
         corpora='user',
         pageToken=this_next_page_token,
         q="'me' in owners",
