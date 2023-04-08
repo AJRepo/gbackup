@@ -47,11 +47,11 @@ def main():
         # Call the Drive v3 API
         results = get_google_files(service, next_page_token)
         print('Files:')
-        print_google_page(service, results)
+        tree_google_pages(service, results)
         next_page_token = results.get('nextPageToken', None)
         i=0
         while next_page_token and i < 3:
-            print_google_page(service, results)
+            tree_google_pages(service, results)
             next_page_token = results.get('nextPageToken', None)
             results = get_google_files(service, next_page_token)
             i=i+1
@@ -60,10 +60,11 @@ def main():
     except HttpError as error:
         print(f'An error occurred: {error}')
 
-def print_google_page(service, this_results):
+def tree_google_pages(service, this_results):
     """Prints the files returned by results
     """
     items = this_results.get('files', [])
+    root_dir="./"
     if not items:
         print('No files found.')
         return
@@ -81,11 +82,24 @@ def print_google_page(service, this_results):
         else:
             folder_name = '/'
         if 'size' in item:
-            print(f"{item['name']:<60}\t{item['id']}\t{item['mimeType']:<30}\t{folder_name:<20}")
+            print("FILE:")
         else:
             #is a directory?
-            print(f"{item['name']:<60}\t{item['id']}\t{item['mimeType']:<30}\t{folder_name:<20}")
+            create_folder(root_dir + folder_name)
+            print("DIRC:")
+        print(f"{item['name']:<60}\t"
+              f"{item['id']}\t"
+              f"{item['mimeType']:<30}\t"
+              f"{root_dir + folder_name:<20}")
     return
+
+def create_folder(this_path):
+    """If the folder does not exist create it"""
+    if not os.path.exists(this_path):
+        os.makedirs(this_path)
+        return 0
+
+    return 1
 
 def get_google_files(this_service, this_next_page_token):
     """Gets the files using NextPageToken
