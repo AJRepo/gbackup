@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import os.path
+import datetime
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -45,7 +46,7 @@ def main():
         service = build(API_NAME, API_VERSION, credentials=creds)
 
         # Call the Drive v3 API
-        results = get_google_files(service, next_page_token)
+        results = list_google_files(service, next_page_token)
         print('Files:')
         tree_google_pages(service, results)
         next_page_token = results.get('nextPageToken', None)
@@ -53,7 +54,7 @@ def main():
         while next_page_token and i < 3:
             tree_google_pages(service, results)
             next_page_token = results.get('nextPageToken', None)
-            results = get_google_files(service, next_page_token)
+            results = list_google_files(service, next_page_token)
             i=i+1
         return
 
@@ -82,6 +83,8 @@ def tree_google_pages(service, this_results):
         else:
             folder_name = '/'
         if 'size' in item:
+            create_folder(root_dir + folder_name)
+            sync_gfile(item, root_dir + folder_name)
             print("FILE:")
         else:
             #is a directory?
@@ -89,9 +92,30 @@ def tree_google_pages(service, this_results):
             print("DIRC:")
         print(f"{item['name']:<60}\t"
               f"{item['id']}\t"
-              f"{item['mimeType']:<30}\t"
+              # f"{item['mimeType']:<30}\t"
+              f"{item['modifiedTime']:<30}\t"
               f"{root_dir + folder_name:<20}")
     return
+
+def gtime_to_unixtime(this_time):
+    """Get gtime of file in unixtime format"""
+    return datetime.datetime.timestamp(datetime.datetime.strptime(this_time,
+            '%Y-%m-%dT%H:%M:%S.%f%z'))
+
+def sync_gfile(this_item, this_path):
+    """If the folder does not exist create it"""
+    if not os.path.isfile(this_path + this_item['name']):
+        print("to Download: not exist")
+    else:
+        real_file_mtime = os.path.getmtime(this_path + this_item['name'])
+        if gtime_to_unixtime(this_item['modifiedTime']) > \
+             real_file_mtime:
+            print(f"to Download: {this_item['modifiedTime']} >"
+                  f"{real_file_mtime}")
+        else:
+            print("to skip")
+
+    return 0
 
 def create_folder(this_path):
     """If the folder does not exist create it"""
@@ -101,7 +125,7 @@ def create_folder(this_path):
 
     return 1
 
-def get_google_files(this_service, this_next_page_token):
+def list_google_files(this_service, this_next_page_token):
     """Gets the files using NextPageToken
     """
     results = this_service.files().list(
@@ -109,7 +133,8 @@ def get_google_files(this_service, this_next_page_token):
         corpora='user',
         pageToken=this_next_page_token,
         q="'me' in owners",
-        fields="nextPageToken, files(id, name, mimeType, size, modifiedTime, parents, ownedByMe)"
+        fields="nextPageToken, files(id, name, mimeType,\
+                size, modifiedTime, parents, ownedByMe, md5Checksum)"
         ).execute()
     return results
 
