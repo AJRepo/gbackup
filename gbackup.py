@@ -22,8 +22,7 @@ SCOPES = ['https://www.googleapis.com/auth/drive']
 
 
 def main():
-    """Shows basic usage of the Drive v3 API.
-    Prints the names and ids of the first 10 files the user has access to.
+    """Basic usage of the Drive v3 API.
     """
     creds = None
     # The file token.json stores the user's access and refresh tokens, and is
@@ -61,10 +60,11 @@ def main():
         tree_google_pages(service, results)
         next_page_token = results.get('nextPageToken', None)
         i=0
+        page_size = 10
         while next_page_token and i < 3:
             tree_google_pages(service, results)
             next_page_token = results.get('nextPageToken', None)
-            results = list_google_files(service, next_page_token)
+            results = list_google_files(service, next_page_token, page_size)
             i=i+1
         return
 
@@ -201,17 +201,17 @@ def sync_gfile(this_service, this_item, this_path):
     """If the folder does not exist create it"""
     extension = get_extension(this_item['mimeType'])
     if not os.path.isfile(this_path + this_item['name'] + extension):
-        print("to Download: not exist")
+        print(f"Download: {this_item['name'] + extension} not exist")
         request = get_grequest(this_service, this_item)
         download_gfile(this_item, request, this_path)
     else:
         real_file_mtime = os.path.getmtime(this_path + this_item['name'] + extension)
         if gtime_to_unixtime(this_item['modifiedTime']) > \
              real_file_mtime:
-            print(f"to Download: {this_item['modifiedTime']} >"
+            print(f"Overwrite: {this_item['modifiedTime']} >"
                   f"{real_file_mtime}")
         else:
-            print("to skip")
+            print(f"Skip: {this_item['name'] + extension} not exist")
 
     return 0
 
@@ -223,11 +223,11 @@ def create_folder(this_path):
 
     return 1
 
-def list_google_files(this_service, this_next_page_token):
+def list_google_files(this_service, this_next_page_token, page_size=2):
     """Gets the files using NextPageToken
     """
     results = this_service.files().list(
-        pageSize=2,
+        pageSize=page_size,
         corpora='user',
         pageToken=this_next_page_token,
         q="'me' in owners",
